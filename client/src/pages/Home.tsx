@@ -20,9 +20,15 @@ import { useState, useEffect } from "react";
 
 export default function Home() {
   const [contactEmail, setContactEmail] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactCompany, setContactCompany] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitMessage, setSubmitMessage] = useState("");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -626,13 +632,28 @@ export default function Home() {
               variants={itemVariants}
               className="bg-white p-8 rounded-2xl shadow-lg space-y-6"
             >
+              {submitStatus === 'success' && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">{submitMessage}</p>
+                </div>
+              )}
+
+              {submitStatus === 'error' && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{submitMessage}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-semibold mb-2">
                   会社名 / 組織名
                 </label>
                 <input
                   type="text"
+                  value={contactCompany}
+                  onChange={(e) => setContactCompany(e.target.value)}
                   placeholder="例: 株式会社 〇〇"
+                  required
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
@@ -643,7 +664,10 @@ export default function Home() {
                 </label>
                 <input
                   type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
                   placeholder="例: 山田太郎"
+                  required
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
@@ -657,6 +681,20 @@ export default function Home() {
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="example@company.com"
+                  required
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  電話番号（任意）
+                </label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="例: 090-1234-5678"
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
@@ -670,12 +708,59 @@ export default function Home() {
                   onChange={(e) => setContactMessage(e.target.value)}
                   placeholder="プロジェクトの概要、課題、期待値などをお聞かせください。"
                   rows={5}
+                  required
                   className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 />
               </div>
 
-              <Button className="w-full" size="lg">
-                相談を申し込む
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isSubmitting}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  setIsSubmitting(true);
+                  setSubmitStatus('idle');
+
+                  try {
+                    const response = await fetch('/api/contact', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        companyName: contactCompany,
+                        contactName,
+                        email: contactEmail,
+                        phone: contactPhone,
+                        message: contactMessage,
+                      }),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                      setSubmitStatus('success');
+                      setSubmitMessage(data.message || 'お問い合わせを受け付けました。');
+                      setContactCompany('');
+                      setContactName('');
+                      setContactEmail('');
+                      setContactPhone('');
+                      setContactMessage('');
+                    } else {
+                      setSubmitStatus('error');
+                      setSubmitMessage(data.message || 'エラーが発生しました。');
+                    }
+                  } catch (error) {
+                    setSubmitStatus('error');
+                    setSubmitMessage('送信に失敗しました。しばらく後にお試しください。');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+              >
+                {isSubmitting ? '送信中...' : '相談を申し込む'}
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
